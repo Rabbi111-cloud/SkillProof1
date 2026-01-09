@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 
-// Example questions (replace with your Supabase questions or local array)
+// Example questions
 const questions = [
   { id: 1, answer: 'REST' },
   { id: 2, answer: 'PUT' },
@@ -17,10 +17,10 @@ export default function Result() {
 
   useEffect(() => {
     async function calculateAndSave() {
-      // 1️⃣ Get the answers from localStorage
+      // 1️⃣ Get answers
       const answers = JSON.parse(localStorage.getItem('answers') || '{}')
 
-      // 2️⃣ Calculate total score
+      // 2️⃣ Calculate score
       let total = 0
       questions.forEach((q) => {
         const userAnswer = (answers[q.id] || '').toLowerCase()
@@ -28,52 +28,52 @@ export default function Result() {
         if (userAnswer.includes(correct.split(' ')[0])) total += 5
         if (userAnswer.includes(correct)) total += 5
       })
-
       setScore(total)
 
-      // 3️⃣ Get logged-in user
-      const { data } = await supabase.auth.getUser()
-      if (!data.user) {
-        alert('You must be logged in to save results.')
+      // 3️⃣ Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+      if (authError || !user) {
+        console.error('No logged-in user', authError)
+        alert('You must be logged in to save results')
         router.push('/login')
         return
       }
 
-      const userId = data.user.id
-      const email = data.user.email
-
-      // 4️⃣ Save submission (optional, you may already have this)
-      await supabase.from('submissions').insert({
-        user_id: userId,
-        score: total,
-        answers,
-      })
-
-      // 5️⃣ Save developer profile with shared_with ready for Step 2
+      // 4️⃣ Save profile to Supabase
       const { error: profileError } = await supabase.from('profiles').upsert(
         {
-          user_id: userId,
-          name: email.split('@')[0], // simple name
-          email: email,
+          user_id: user.id,
+          name: user.email.split('@')[0],
+          email: user.email,
           score: total,
           assessment_done: true,
-          shared_with: [], // initially empty, can be updated per company later
+          shared_with: [], // ready for company links
         },
         { onConflict: 'user_id' } // prevents duplicates
       )
 
-      if (profileError) console.error('Error saving profile:', profileError)
+      if (profileError) {
+        console.error('Error saving profile:', profileError)
+      } else {
+        console.log('Profile saved successfully!')
+      }
 
-      // 6️⃣ Clean up localStorage
+      // 5️⃣ Save submission (optional)
+      await supabase.from('submissions').insert({
+        user_id: user.id,
+        score: total,
+        answers,
+      })
+
+      // 6️⃣ Clear answers
       localStorage.removeItem('answers')
     }
 
     calculateAndSave()
   }, [router])
 
-  if (score === null) {
-    return <p style={{ padding: 30 }}>Calculating your results...</p>
-  }
+  if (score === null) return <p style={{ padding: 30 }}>Calculating your score...</p>
 
   return (
     <main style={{ padding: 30, maxWidth: 600, margin: 'auto' }}>

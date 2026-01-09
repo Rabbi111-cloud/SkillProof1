@@ -12,17 +12,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function loadDashboard() {
-      // 🔒 FIX 2: Protect route
+      // 1. Get logged-in user
       const { data: authData, error: authError } = await supabase.auth.getUser()
 
       if (authError || !authData.user) {
-        router.push('/login')
+        router.push('/')
         return
       }
 
       setUser(authData.user)
 
-      // Check if assessment already submitted
+      // 2. Check if user already submitted assessment
       const { data: submissionData, error: submissionError } =
         await supabase
           .from('submissions')
@@ -40,7 +40,7 @@ export default function Dashboard() {
     }
 
     loadDashboard()
-  }, [router])
+  }, [])
 
   if (loading) {
     return <p style={{ padding: 20 }}>Loading dashboard...</p>
@@ -49,17 +49,6 @@ export default function Dashboard() {
   return (
     <main style={{ padding: 30 }}>
       <h2>Welcome {user.email}</h2>
-
-      {/* 🔓 FIX 3: Logout button */}
-      <button
-        onClick={async () => {
-          await supabase.auth.signOut()
-          router.push('/login')
-        }}
-        style={{ marginBottom: 20 }}
-      >
-        Logout
-      </button>
 
       {submission ? (
         <>

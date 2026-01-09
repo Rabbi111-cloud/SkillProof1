@@ -119,8 +119,7 @@ export default function AssessmentPage() {
     <main style={{ padding: 30, maxWidth: 600, margin: 'auto' }}>
       <p>Question {currentIndex + 1} of {questions.length}</p>
       <h3>{question.question}</h3>
-
-  {['a','b','c','d'].map((optKey) => {
+{['a','b','c','d'].map((optKey) => {
   const optionText = question[`option_${optKey}`] || 'Option missing'
   return (
     <div key={optKey} style={{ margin: '10px 0' }}>
@@ -141,4 +140,4 @@ export default function AssessmentPage() {
     </div>
   )
 })}
-
+     

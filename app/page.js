@@ -1,73 +1,38 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '../lib/supabaseClient'
 
-export default function Dashboard() {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [submission, setSubmission] = useState(null)
+export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    async function loadDashboard() {
-      // 1. Get logged-in user
-      const { data: authData, error: authError } = await supabase.auth.getUser()
+    async function checkAuth() {
+      const { data } = await supabase.auth.getUser()
 
-      if (authError || !authData.user) {
-        router.push('/')
-        return
+      if (data.user) {
+        router.push('/dashboard')
       }
-
-      setUser(authData.user)
-
-      // 2. Check if user already submitted assessment
-      const { data: submissionData, error: submissionError } =
-        await supabase
-          .from('submissions')
-          .select('*')
-          .eq('user_id', authData.user.id)
-          .maybeSingle()
-
-      if (submissionError) {
-        console.error(submissionError)
-      } else {
-        setSubmission(submissionData)
-      }
-
-      setLoading(false)
     }
 
-    loadDashboard()
+    checkAuth()
   }, [])
 
-  if (loading) {
-    return <p style={{ padding: 20 }}>Loading dashboard...</p>
-  }
-
   return (
-    <main style={{ padding: 30 }}>
-      <h2>Welcome {user.email}</h2>
+    <main style={{ padding: 40 }}>
+      <h1>Developer Assessment Platform</h1>
+      <p>Get verified as a backend engineer.</p>
 
-      {submission ? (
-        <>
-          <h3>Assessment Completed ✅</h3>
-          <p><strong>Your Score:</strong> {submission.score}</p>
+      <br />
 
-          <button onClick={() => router.push('/profile')}>
-            View Profile
-          </button>
-        </>
-      ) : (
-        <>
-          <p>You have not taken the assessment yet.</p>
+      <button onClick={() => router.push('/login')}>
+        Login
+      </button>
 
-          <button onClick={() => router.push('/assessment')}>
-            Take Assessment
-          </button>
-        </>
-      )}
+      <button onClick={() => router.push('/signup')} style={{ marginLeft: 10 }}>
+        Sign Up
+      </button>
     </main>
   )
 }

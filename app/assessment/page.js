@@ -13,16 +13,16 @@ export default function AssessmentPage() {
   const [loading, setLoading] = useState(true)
   const [score, setScore] = useState(null)
 
-  // Fetch questions from Supabase
+  // 1️⃣ Fetch assessments from Supabase
   useEffect(() => {
     async function fetchQuestions() {
       const { data, error } = await supabase
-        .from('questions')
+        .from('assessments') // your actual table name
         .select('*')
         .order('id')
 
       if (error) {
-        console.error('Error fetching questions:', error)
+        console.error('Error fetching assessments:', error)
       } else {
         setQuestions(data || [])
       }
@@ -32,35 +32,39 @@ export default function AssessmentPage() {
     fetchQuestions()
   }, [])
 
-  if (loading) return <p style={{ padding: 30 }}>Loading questions...</p>
-  if (!questions.length) return <p style={{ padding: 30 }}>No questions available.</p>
+  // 2️⃣ Show loading or empty state
+  if (loading) return <p style={{ padding: 30 }}>Loading assessments...</p>
+  if (!questions.length) return <p style={{ padding: 30 }}>No assessments available.</p>
 
   const question = questions[currentIndex]
 
+  // 3️⃣ Track selected option
   function handleSelect(option) {
     setSelectedOption(option)
     setAnswers(prev => ({ ...prev, [currentIndex]: option }))
   }
 
+  // 4️⃣ Next question
   function nextQuestion() {
     if (selectedOption == null) return
     setCurrentIndex(currentIndex + 1)
     setSelectedOption(answers[currentIndex + 1] || null)
   }
 
+  // 5️⃣ Submit assessment
   async function submitAssessment() {
     if (selectedOption == null) return
 
     const finalAnswers = { ...answers, [currentIndex]: selectedOption }
 
-    // Calculate score
+    // Calculate total score
     let total = 0
     questions.forEach((q, index) => {
       if (finalAnswers[index] === q.correct_option) total += q.points
     })
     setScore(total)
 
-    // Save to Supabase
+    // Get current user
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       alert('You must be logged in to save results')
@@ -68,43 +72,60 @@ export default function AssessmentPage() {
       return
     }
 
-    await supabase.from('results').insert({
+    // Save to results table
+    const { error: resultsError } = await supabase.from('results').insert({
       user_id: user.id,
       answers: finalAnswers,
-      score: total
+      score: total,
     })
+    if (resultsError) console.error('Error saving results:', resultsError)
 
-    await supabase.from('profiles').upsert({
+    // Upsert profile (RLS safe)
+    const { error: profileError } = await supabase.from('profiles').upsert({
       user_id: user.id,
       name: user.email.split('@')[0],
       email: user.email,
       score: total,
       assessment_done: true,
-      shared_with: []
+      shared_with: [],
     }, { onConflict: 'user_id' })
+    if (profileError) console.error('Error saving profile:', profileError)
 
+    // Clear selections
     setAnswers({})
     setSelectedOption(null)
   }
 
+  // 6️⃣ Show final score
   if (score !== null) {
     return (
       <main style={{ padding: 30, maxWidth: 600, margin: 'auto' }}>
         <h2>Assessment Complete 🎉</h2>
         <p><strong>Your total score:</strong></p>
         <h1>{score}</h1>
-        <button onClick={() => router.push('/dashboard')}>Go to Dashboard</button>
+        <button
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#4f46e5',
+            color: '#fff',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
+          onClick={() => router.push('/dashboard')}
+        >
+          Go to Dashboard
+        </button>
       </main>
     )
   }
 
-  // Render current question
+  // 7️⃣ Render current question
   return (
     <main style={{ padding: 30, maxWidth: 600, margin: 'auto' }}>
       <p>Question {currentIndex + 1} of {questions.length}</p>
       <h3>{question.question}</h3>
 
-      {['a','b','c','d'].map((optKey) => {
+      {['a','b','c','d'].map(optKey => {
         const optionText = question[`option_${optKey}`] || 'Option missing'
         return (
           <div key={optKey} style={{ margin: '10px 0' }}>
@@ -177,3 +198,5 @@ export default function AssessmentPage() {
     </main>
   )
 }
+
+ 

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 
-// Example questions
+// Example questions (replace with your real questions or fetch from Supabase)
 const questions = [
   { id: 1, answer: 'REST' },
   { id: 2, answer: 'PUT' },
@@ -17,57 +17,65 @@ export default function Result() {
 
   useEffect(() => {
     async function calculateAndSave() {
-      // 1️⃣ Get answers
-      const answers = JSON.parse(localStorage.getItem('answers') || '{}')
+      try {
+        // 1️⃣ Get answers from localStorage
+        const answers = JSON.parse(localStorage.getItem('answers') || '{}')
+        console.log('Answers:', answers)
 
-      // 2️⃣ Calculate score
-      let total = 0
-      questions.forEach((q) => {
-        const userAnswer = (answers[q.id] || '').toLowerCase()
-        const correct = q.answer.toLowerCase()
-        if (userAnswer.includes(correct.split(' ')[0])) total += 5
-        if (userAnswer.includes(correct)) total += 5
-      })
-      setScore(total)
+        // 2️⃣ Calculate total score
+        let total = 0
+        questions.forEach((q) => {
+          const userAnswer = (answers[q.id] || '').toLowerCase()
+          const correct = q.answer.toLowerCase()
+          if (userAnswer.includes(correct.split(' ')[0])) total += 5
+          if (userAnswer.includes(correct)) total += 5
+        })
+        setScore(total)
+        console.log('Calculated Score:', total)
 
-      // 3️⃣ Get current user
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
+        // 3️⃣ Get current logged-in user
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) {
+          console.error('User not logged in', authError)
+          alert('You must be logged in to save results.')
+          router.push('/login')
+          return
+        }
+        console.log('Logged in user:', user.id, user.email)
 
-      if (authError || !user) {
-        console.error('No logged-in user', authError)
-        alert('You must be logged in to save results')
-        router.push('/login')
-        return
-      }
+        // 4️⃣ Upsert profile safely (works with RLS ON)
+        const { error: profileError } = await supabase.from('profiles').upsert(
+          {
+            user_id: user.id,
+            name: user.email.split('@')[0],
+            email: user.email,
+            score: total,
+            assessment_done: true,
+            shared_with: [], // ready for company links
+          },
+          { onConflict: 'user_id' } // prevents duplicates
+        )
 
-      // 4️⃣ Save profile to Supabase
-      const { error: profileError } = await supabase.from('profiles').upsert(
-        {
+        if (profileError) {
+          console.error('Error saving profile:', profileError)
+        } else {
+          console.log('Profile saved successfully!')
+        }
+
+        // 5️⃣ Save submission (optional)
+        const { error: submissionError } = await supabase.from('submissions').insert({
           user_id: user.id,
-          name: user.email.split('@')[0],
-          email: user.email,
           score: total,
-          assessment_done: true,
-          shared_with: [], // ready for company links
-        },
-        { onConflict: 'user_id' } // prevents duplicates
-      )
+          answers,
+        })
 
-      if (profileError) {
-        console.error('Error saving profile:', profileError)
-      } else {
-        console.log('Profile saved successfully!')
+        if (submissionError) console.error('Error saving submission:', submissionError)
+
+        // 6️⃣ Clean up
+        localStorage.removeItem('answers')
+      } catch (err) {
+        console.error('Unexpected error:', err)
       }
-
-      // 5️⃣ Save submission (optional)
-      await supabase.from('submissions').insert({
-        user_id: user.id,
-        score: total,
-        answers,
-      })
-
-      // 6️⃣ Clear answers
-      localStorage.removeItem('answers')
     }
 
     calculateAndSave()
@@ -87,4 +95,3 @@ export default function Result() {
     </main>
   )
 }
-

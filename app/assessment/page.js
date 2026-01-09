@@ -120,73 +120,25 @@ export default function AssessmentPage() {
       <p>Question {currentIndex + 1} of {questions.length}</p>
       <h3>{question.question}</h3>
 
-  {['A', 'B', 'C', 'D'].map((opt) => (
-        <div key={opt} style={{ margin: '10px 0' }}>
-          <button
-            style={{
-              width: '100%',
-              padding: '10px',
-              backgroundColor: selectedOption === opt ? '#4f46e5' : '#e5e7eb',
-              color: selectedOption === opt ? '#fff' : '#000',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-            onClick={() => handleSelect(opt)}
-          >
-            {question[`option_${opt.toLowerCase()}`]}
-          </button>
-        </div>
-      ))}
-
-      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
-        {currentIndex > 0 && (
-          <button
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#f3f4f6',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-            onClick={() => {
-              setCurrentIndex(currentIndex - 1)
-              setSelectedOption(answers[currentIndex - 1] || null)
-            }}
-          >
-            Previous
-          </button>
-        )}
-
-        {currentIndex < questions.length - 1 ? (
-          <button
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#4f46e5',
-              color: '#fff',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-            onClick={nextQuestion}
-            disabled={selectedOption == null}
-          >
-            Next
-          </button>
-        ) : (
-          <button
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#10b981',
-              color: '#fff',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-            onClick={submitAssessment}
-            disabled={selectedOption == null}
-          >
-            Submit Assessment
-          </button>
-        )}
-      </div>
-    </main>
+  {['a','b','c','d'].map((optKey) => {
+  const optionText = question[`option_${optKey}`] || 'Option missing'
+  return (
+    <div key={optKey} style={{ margin: '10px 0' }}>
+      <button
+        style={{
+          width: '100%',
+          padding: '10px',
+          backgroundColor: selectedOption === optKey.toUpperCase() ? '#4f46e5' : '#e5e7eb',
+          color: selectedOption === optKey.toUpperCase() ? '#fff' : '#000',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer'
+        }}
+        onClick={() => handleSelect(optKey.toUpperCase())}
+      >
+        {optionText}
+      </button>
+    </div>
   )
-}
+})}
+
